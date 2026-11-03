@@ -1,0 +1,19 @@
+# 本机路径（含 SDK 目录）
+local.properties
+
+# 构建产物
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.idsig
+
+# IDE
+.idea/
+*.iml
+captures/
+
+# 系统文件
+.DS_Store
+Thumbs.db
