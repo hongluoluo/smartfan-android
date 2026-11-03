@@ -5,6 +5,8 @@
 配套固件：[esp32-fan-controller](https://github.com/hongluoluo/esp32-fan-controller)
 
 > 本 App 不是通用 MQTT 面板，而是与该固件**约定的主题协议**配套的专用控制端（协议见下文「MQTT 协议」）。
+>
+> 📦 直接下载安装包：[Releases](https://github.com/hongluoluo/smartfan-android/releases)
 
 ---
 
@@ -238,6 +240,28 @@ v2.3.0 已修复：解析时严格限定 `fan/` 前缀，`number/text/sensor` �
 **4. 定时不生效**
 
 先看设置页「设备时间」：`--unsynced--` 表示设备未完成 NTP 授时（固件里 NTP 服务器要用域名，`223.5.5.5` 只是 DNS 不提供 NTP）。
+
+---
+
+## 与固件项目的关系
+
+| | [esp32-fan-controller](https://github.com/hongluoluo/esp32-fan-controller)（固件） | 本项目（App） |
+|---|---|---|
+| 运行位置 | ESP32-WROOM-32E | 安卓手机 |
+| 职责 | **真正干活**：18kHz PWM 输出、执行星期定时与倒计时、维护并广播状态 | **只做配置与展示**：界面、规则编辑、状态呈现 |
+| 依赖关系 | 不依赖 App，也可只用 Home Assistant 控制 | 依赖固件提供的 MQTT 主题协议 |
+| 通信路径 | `设备 ⇄ MQTT broker`（另有 HA 原生 API 通道） | `App ⇄ MQTT broker` |
+
+一句话：**App 是遥控器，固件是执行器。** 定时与倒计时写在设备里，所以手机关机、App 未运行都不影响到点执行；App 只负责把配置写进设备、把设备状态显示出来。
+
+两端共享的协议契约（任意一侧改动都要同步）：
+
+| 用途 | 主题 | 载荷 |
+|---|---|---|
+| 命令 | `fan32/text/cmd/command` | `on` / `off` / `speed N` |
+| 状态快照 | `fan32/state`（retained） | `{"on":..,"speed":..,"rules":[..6..],"cd_action":..,"cd_rem":..}` |
+| 定时槽 | `fan32/text/ruleN/command` | `HH:MM\|DAYS\|ACTION\|SPEED` |
+| 倒计时 | `fan32/text/cd_action/command`、`fan32/number/cd_minutes/command`、`fan32/button/cd_start(或 cd_cancel)/command` | `ON/OFF`、`1~1440`、`PRESS` |
 
 ---
 
