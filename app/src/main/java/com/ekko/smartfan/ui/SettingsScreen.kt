@@ -47,6 +47,9 @@ fun SettingsScreen(onBack: () -> Unit) {
     val state by FanMqtt.state.collectAsState()
     val devTime by FanMqtt.devTime.collectAsState()
     val link by FanMqtt.link.collectAsState()
+    val devIp by FanMqtt.devIp.collectAsState()
+    val uptime by FanMqtt.uptimeSec.collectAsState()
+    val resetReason by FanMqtt.resetReason.collectAsState()
 
     var host by remember { mutableStateOf(prefs.host) }
     var port by remember { mutableStateOf(prefs.port.toString()) }
@@ -151,6 +154,8 @@ fun SettingsScreen(onBack: () -> Unit) {
                     Text("关于", style = MaterialTheme.typography.titleMedium)
                     Text("智能风扇 v2.0.0", fontSize = 13.sp)
                     Text("设备时间: ${devTime}", fontSize = 13.sp)
+                    Text("设备 IP: $devIp · 已运行 ${"${uptime / 3600} 小时 ${uptime % 3600 / 60} 分"}", fontSize = 12.sp)
+                    Text("复位原因: $resetReason", fontSize = 12.sp)
                     Text(
                         "服务器连接: ${if (link.brokerConnected) "正常" else "断开"} · 设备: ${if (state.connected) "在线" else "离线"}",
                         fontSize = 12.sp

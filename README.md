@@ -218,6 +218,8 @@ app/src/main/java/com/ekko/smartfan/
 | v2.2.0 | 固件新增固定命令通道 `fan32/text/cmd/command` 与 retained 快照 `fan32/state`；App 改为读快照，冷启动即可显示真实状态 |
 | v2.3.0 | 修复控制页间歇性开关闪烁（非风扇 `/state` 主题被误判）；连接单实例化；UI 状态 400ms 防抖 |
 | v2.3.1 | 移除源码中硬编码的 broker 地址与账号密码（公开仓库前脱敏），行为不变 |
+| v2.4.0 | 回前台强制重建 MQTT 连接（修息屏后"点了没反应"）；keepalive 降到 15s；设置页新增设备 IP / 运行时长 / 复位原因 |
+| v2.4.1 | 修正状态主题匹配：ESPHome 的 text_sensor 实际发布在 `fan32/sensor/<name>/state`，此前设备时间与复位原因收不到 |
 
 ---
 
@@ -237,7 +239,15 @@ App 未收到 `fan32/state`（主题未就绪）或命令没发出。到设置�
 
 v2.3.0 已修复：解析时严格限定 `fan/` 前缀，`number/text/sensor` 等实体的 `/state` 不再参与开关判定。
 
-**4. 定时不生效**
+**4. HA 里状态长时间不更新，但风扇在转**
+
+这是**设备 ↔ HA 的 ESPHome API（6053）断了**，与 App 的 MQTT 通道无关。常见成因与固件侧对策：
+- DHCP 换 IP，HA 集成仍指向旧地址 → 固件已改**静态 IP**
+- 固件 `api.reboot_timeout` 默认 15 分钟无客户端就重启 → 已设 `0s`
+- WiFi 省电导致长连接假死 → 已设 `power_save_mode: none`
+排查顺序：设置页看「设备 IP」是否与路由器上一致 → 手机浏览器访问 `http://<设备IP>:3232`（OTA 端口）能通但 HA 仍不更新，说明是 API 侧问题，重启设备或等固件 OTA 修复。
+
+**5. 定时不生效**
 
 先看设置页「设备时间」：`--unsynced--` 表示设备未完成 NTP 授时（固件里 NTP 服务器要用域名，`223.5.5.5` 只是 DNS 不提供 NTP）。
 

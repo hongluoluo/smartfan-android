@@ -45,7 +45,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         FanMqtt.loadConfig(this)
-        FanMqtt.connect()
+        // 息屏/后台醒来后旧 TCP 可能已半死，这里强制校验并重建连接
+        FanMqtt.ensureFresh()
     }
 }
 

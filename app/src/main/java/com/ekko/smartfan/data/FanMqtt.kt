@@ -65,6 +65,18 @@ object FanMqtt {
     private val _devTime = MutableStateFlow("--")
     val devTime: StateFlow<String> = _devTime.asStateFlow()
 
+    /** 设备当前 IP（来自状态快照，排障用） */
+    private val _devIp = MutableStateFlow("--")
+    val devIp: StateFlow<String> = _devIp.asStateFlow()
+
+    /** 设备已运行秒数（来自状态快照） */
+    private val _uptimeSec = MutableStateFlow(0L)
+    val uptimeSec: StateFlow<Long> = _uptimeSec.asStateFlow()
+
+    /** 设备复位原因（brownout / power_on / software / …） */
+    private val _resetReason = MutableStateFlow("--")
+    val resetReason: StateFlow<String> = _resetReason.asStateFlow()
+
     @Volatile private var cmdTopic: String = CMD_TOPIC
     @Volatile private var legacyFanBase: String? = null
     @Volatile private var client: MqttAsyncClient? = null
@@ -105,8 +117,8 @@ object FanMqtt {
                 val opts = MqttConnectOptions().apply {
                     isAutomaticReconnect = true
                     isCleanSession = true
-                    keepAliveInterval = 20
-                    connectionTimeout = 6
+                    keepAliveInterval = 15
+                    connectionTimeout = 5
                     userName = user
                     password = pass.toCharArray()
                 }
@@ -146,6 +158,14 @@ object FanMqtt {
         }
     }
 
+    /** 强制重建连接：息屏/后台醒来后旧 socket 可能已半死，靠它快速恢复 */
+    fun ensureFresh() {
+        val c = client
+        if (c != null && c.isConnected) return
+        disconnect()
+        connect()
+    }
+
     fun disconnect() {
         try {
             client?.disconnectForcibly(0, 500)
@@ -165,7 +185,6 @@ object FanMqtt {
                 "$PREFIX/text/+/state",
                 "$PREFIX/number/+/state",
                 "$PREFIX/sensor/+/state",
-                "$PREFIX/text_sensor/+/state",
                 "$PREFIX/status"
             )
             c.subscribe(topics, IntArray(topics.size) { 1 })
@@ -195,8 +214,12 @@ object FanMqtt {
                     }
                 }
             }
-            topic == "$PREFIX/text_sensor/dev_time/state" -> _devTime.value = v
-            topic == "$PREFIX/sensor/cd_remaining/state" -> {
+            // ESPHome 的 text_sensor 在 MQTT 上落在 <prefix>/sensor/<id>/state，
+            // 这里统一按实体名匹配，sensor/ 与 text_sensor/ 两种前缀都能吃
+            topic.endsWith("/dev_time/state") -> _devTime.value = v
+            topic.endsWith("/wifi_ip/state") -> _devIp.value = v
+            topic.endsWith("/reset_reason/state") -> _resetReason.value = v
+            topic.endsWith("/cd_remaining/state") -> {
                 _cdRemaining.value = v.toDoubleOrNull()?.toLong() ?: 0L
             }
             // 风扇状态只认 fan/ 前缀，绝不能让 number/text/sensor 的 /state 混进来
@@ -230,6 +253,8 @@ object FanMqtt {
             }
             o.optString("cd_action", "").takeIf { it.isNotEmpty() }?.let { _cdAction.value = it }
             if (o.has("cd_rem")) _cdRemaining.value = o.optLong("cd_rem", 0L)
+            o.optString("ip", "").takeIf { it.isNotEmpty() }?.let { _devIp.value = it }
+            if (o.has("up")) _uptimeSec.value = o.optLong("up", 0L)
             updateLink { it.copy(topicReady = true, cmdTopic = CMD_TOPIC, lastError = "") }
         } catch (e: Exception) {
             updateLink { it.copy(lastError = "快照解析失败: ${e.message}") }

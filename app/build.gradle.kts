@@ -11,8 +11,8 @@ android {
         applicationId = "com.ekko.smartfan"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "2.3.1"
+        versionCode = 12
+        versionName = "2.4.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
